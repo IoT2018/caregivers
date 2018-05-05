@@ -7,7 +7,7 @@ Created on Thu Dec 14 12:18:37 2017
 import json
 import time
 import cherrypy
-
+import threading
 
 class catalog:
     def __init__(self, filename):
@@ -121,12 +121,17 @@ class catalog:
 
                 return (dev)
 
+    def updating(self):
+        file = open(self.filename, 'r')
+        catalog = json.loads(file.read())
 
-# def updating:
-#     while True:
-#         file = open('catalog', 'r+')
-#         catalog = json.loads(file.read())
+        delay=120 #2 minutes
 
+        devices = catalog['devices']
+        for dev in devices:
+            silence=time.time()-dev['timestamp']
+            if silence >= delay:
+                del dev
 
 ######################################
 ###WEB SERVICE EXPOSING
@@ -135,7 +140,7 @@ class index:
     exposed = True
 
     def __init__(self):
-        self.mycatalog = catalog('catalog')
+        self.mycatalog = catalog('/home/andres/Escritorio/IoT/caregivers/catalog')
 
     def GET(self, *uri, **params):
         if uri:
@@ -154,8 +159,9 @@ class index:
 
         return (str(response))
 
-    def POST(self):
-        pass
+    def POST(self, *uri, **params):
+        if uri[0] == 'echo':
+            return(cherrypy.request.body.read())
 
     def PUT(self, *uri, **params):
         if uri:
@@ -164,13 +170,16 @@ class index:
                 new_dev = json.loads(input_data)
                 response = self.mycatalog.add_device(new_dev['end_point'], new_dev['resources'])
 
-            if uri[0] == 'add_user':
+            elif uri[0] == 'add_user':
                 input_data = cherrypy.request.body.read().decode('utf-8')
                 new_user = json.loads(input_data)
                 response = self.mycatalog.add_user(new_user['name'], new_user['surname'], new_user['email'])
 
-            if uri[0] == 'refresh':
+            elif uri[0] == 'refresh':
                 response = self.mycatalog.refresh(params['ID'])
+
+            elif uri[0] == 'echo':
+                response = cherrypy.request.body.read().decode('utf-8')
 
             else:
                 response = 0
@@ -183,12 +192,28 @@ class index:
         pass
 
 
-if __name__ == '__main__':
-    conf = {'/'
+class server_thread(threading.Thread ):
+    """Subclass of threading.Thread"""
+    def __init__( self, threadName ):
+        """"Initialize thread, set sleep time, print data"""
+        threading.Thread.__init__( self, name = threadName )
+        print ("The server has started, API ON")
+
+    def run(self):
+        conf = {'/'
             : {'request.dispatch': cherrypy.dispatch.MethodDispatcher(),
                'tools.sessions.on': True, }}
 
+        cherrypy.config.update({'server.socket_host': '0.0.0.0'})
+        cherrypy.config.update({'server.socket_port': 8080})
+        cherrypy.tree.mount(index(), '/', conf)
+        cherrypy.engine.start()
+        cherrypy.engine.block()
 
-    cherrypy.tree.mount(index(), '/', conf)
-    cherrypy.engine.start()
-    cherrypy.engine.block()
+
+if __name__ == '__main__':
+    server = server_thread('Web Service')
+    server.run()
+
+
+
