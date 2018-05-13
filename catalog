@@ -1,0 +1,1 @@
+{"brokers": {"ip": "127.0.0.1", "port": "8080"}, "devices": [{"timestamp": "0.0020394", "resources": ["L","T"], "ID": 0, "end_point": ["MQTT","REST"]}], "users": [{"email": "andresmh96", "ID": 0, "name": "Andres", "surname": "Mu�oz"}, {"email": "jc@gmail.com", "ID": 1, "name": "Juan", "surname": "Leon"}]}
